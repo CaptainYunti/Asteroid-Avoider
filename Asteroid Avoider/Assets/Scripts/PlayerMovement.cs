@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -7,6 +8,7 @@ public class PlayerMovement : MonoBehaviour
 {
     [SerializeField] float forceMagnitude;
     [SerializeField] float maxVelocity;
+    [SerializeField] float rotationSpeed;
 
     Rigidbody rb;
     Camera mainCamera;
@@ -23,8 +25,63 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
+        ProcessInput();
+
+        KeepPlayerOnScreen();
+
+        RotateToFaceVelocity();
+    }
+
+
+
+    private void FixedUpdate()
+    {
+        if(movementDirection == Vector3.zero) { return; }
+
+        rb.AddForce(movementDirection * forceMagnitude * Time.fixedDeltaTime, ForceMode.Force);
+
+        rb.velocity = Vector3.ClampMagnitude(rb.velocity, maxVelocity);
+    }
+
+    private void RotateToFaceVelocity()
+    {
+        if(rb.velocity == Vector3.zero) { return; }
+
+        Quaternion targetRotation = Quaternion.LookRotation(rb.velocity, Vector3.back);
+        transform.rotation = Quaternion.Lerp(
+            transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+    }
+
+    private void KeepPlayerOnScreen()
+    {
+        Vector3 newPosition = transform.position;
+        Vector3 viewportPosition = mainCamera.WorldToViewportPoint(transform.position);
+
+        if (viewportPosition.x > 1)
+        {
+            newPosition.x = -newPosition.x + 0.1f;
+        }
+        else if (viewportPosition.x < 0)
+        {
+            newPosition.x = -newPosition.x - 0.1f;
+        }
+
+        if (viewportPosition.y > 1)
+        {
+            newPosition.y = -newPosition.y + 0.1f;
+        }
+        else if (viewportPosition.y < 0)
+        {
+            newPosition.y = -newPosition.y - 0.1f;
+        }
+
+        transform.position = newPosition;
+    }
+
+    void ProcessInput()
+    {
         isTouching = Touchscreen.current.primaryTouch.press.isPressed;
-        if(isTouching)
+        if (isTouching)
         {
             touchPosition = Touchscreen.current.primaryTouch.position.ReadValue();
             Vector3 worldPosition = mainCamera.ScreenToWorldPoint(touchPosition);
@@ -37,14 +94,5 @@ public class PlayerMovement : MonoBehaviour
         {
             movementDirection = Vector3.zero;
         }
-    }
-
-    private void FixedUpdate()
-    {
-        if(movementDirection == Vector3.zero) { return; }
-
-        rb.AddForce(movementDirection * forceMagnitude * Time.fixedDeltaTime, ForceMode.Force);
-
-        rb.velocity = Vector3.ClampMagnitude(rb.velocity, maxVelocity);
     }
 }
